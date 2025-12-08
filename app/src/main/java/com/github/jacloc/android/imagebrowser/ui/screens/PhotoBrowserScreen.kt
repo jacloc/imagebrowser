@@ -1,53 +1,55 @@
 package com.github.jacloc.android.imagebrowser.ui.screens
 
-import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
-import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
-import androidx.compose.foundation.lazy.staggeredgrid.items
-import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DockedSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
-import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.github.jacloc.android.imagebrowser.data.domain.Photo
@@ -69,7 +71,7 @@ fun PhotoBrowserScreen(
         },
         onLoadMore = {
             photoBrowserViewModel.loadMorePhotos()
-        }
+        },
     )
 }
 
@@ -79,7 +81,7 @@ fun PhotoBrowserScreen(
     modifier: Modifier = Modifier,
     uiState: UiState,
     onSearch: (String) -> Unit,
-    onLoadMore: () -> Unit
+    onLoadMore: () -> Unit,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -100,9 +102,7 @@ fun PhotoBrowserScreen(
                         expanded = false,
                         onExpandedChange = {},
                         leadingIcon = {
-                            IconButton(onClick = {}) {
-                                Icon(Icons.Default.Search, "Search")
-                            }
+                            Icon(Icons.Default.Search, "Search")
                         },
                         trailingIcon = {},
                     )
@@ -129,7 +129,7 @@ fun PhotoBrowserScreen(
                     modifier = Modifier.fillMaxSize(),
                     photoCollection = uiState.photoCollection,
                     isLoadingMore = uiState.isLoadingMore,
-                    onLoadMore = onLoadMore
+                    onLoadMore = onLoadMore,
                 )
             }
         }
@@ -149,45 +149,118 @@ fun PhotoGrid(
     modifier: Modifier = Modifier,
     photoCollection: PhotoCollection,
     isLoadingMore: Boolean,
-    onLoadMore: () -> Unit
+    onLoadMore: () -> Unit,
 ) {
-    val listState = rememberLazyStaggeredGridState()
-    LaunchedEffect(listState) {
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
-            .collect { lastVisibleItemIndex ->
-                if (lastVisibleItemIndex != null &&
-                    lastVisibleItemIndex == listState.layoutInfo.totalItemsCount - 1 &&
-                    listState.layoutInfo.totalItemsCount > 0 // Ensure there are items
-                ) {
-                    onLoadMore()
-                }
+    var selectedPhoto by remember { mutableStateOf<Photo?>(null) }
+    selectedPhoto?.let {
+        EnlargedPhotoDialog(
+            photo = it,
+            onDismissRequest = {
+                selectedPhoto = null
             }
+        )
     }
 
-    LazyVerticalStaggeredGrid(
+    val listState = rememberLazyGridState()
+    LazyVerticalGrid(
         modifier = modifier,
-        columns = StaggeredGridCells.Fixed(3),
+        columns = GridCells.Fixed(3),
         state = listState
     ) {
-        items(photoCollection.photoList) {
-            PhotoItem(modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp), photo = it)
+        items(photoCollection.photoList, key = { it.url }) {
+            SquarePhotoItem(photo = it, onPhotoClicked = { p ->
+                selectedPhoto = p
+            })
         }
         if (isLoadingMore) {
-            item(span = StaggeredGridItemSpan.FullLine) { LoadingSpinner() }
+            item(span = { GridItemSpan(3) }) { LoadingSpinner() }
+        }
+    }
+
+    // Check if more items need to be loaded
+    val loadMore by remember {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val totalItemsNumber = layoutInfo.totalItemsCount
+            val lastVisibleItemIndex = (layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0) + 1
+            lastVisibleItemIndex >= (totalItemsNumber - 9) && !isLoadingMore
+        }
+    }
+
+    LaunchedEffect(loadMore) {
+        if (loadMore) {
+            onLoadMore()
         }
     }
 }
 
 @Composable
-fun PhotoItem(
-    modifier: Modifier = Modifier,
-    photo: Photo
+fun EnlargedPhotoDialog(photo: Photo, onDismissRequest: () -> Unit) {
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(usePlatformDefaultWidth = false) // Allow full screen width
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize().clickable(onClick = {
+                onDismissRequest()
+            }),
+            contentAlignment = Alignment.Center
+        ) {
+            DetailedPhotoItem(photo)
+        }
+    }
+}
+
+@Composable
+fun DetailedPhotoItem(photo: Photo) {
+    var showMetadata by remember { mutableStateOf(false) }
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .clickable(onClick = {})
+    ) {
+        AsyncImage(
+            model = photo.url,
+            contentDescription = "",
+            contentScale = ContentScale.Fit, // Fit the enlarged image within boundaries
+            modifier = Modifier
+                .fillMaxWidth()
+                .wrapContentHeight()
+                .padding(8.dp)
+                .clickable(onClick = { showMetadata = !showMetadata })
+        )
+
+        // Extra metadata about the photo
+        AnimatedVisibility(showMetadata) {
+            SelectionContainer {
+                Column(modifier = Modifier.padding(8.dp)) {
+                    Text(text = "ID: ${photo.id}", style = MaterialTheme.typography.titleMedium)
+                    if (photo.title.isNotBlank()) {
+                        Text(text = "Title", style = MaterialTheme.typography.titleMedium)
+                        Text(text = photo.title)
+                    }
+                    Text(text = "URL", style = MaterialTheme.typography.titleMedium)
+                    Text(text = photo.url)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SquarePhotoItem(
+    photo: Photo,
+    onPhotoClicked: (Photo) -> Unit
 ) {
     AsyncImage(
-        modifier = modifier,
+        modifier = Modifier
+            .fillMaxSize()
+            .clickable(onClick = { onPhotoClicked(photo) })
+            .aspectRatio(1f)
+            .padding(8.dp),
         model = photo.url,
+        contentScale = ContentScale.Crop,
         contentDescription = "Image from URL",
     )
 }

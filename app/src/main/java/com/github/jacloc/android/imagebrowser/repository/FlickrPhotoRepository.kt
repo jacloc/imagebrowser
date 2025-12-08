@@ -9,7 +9,12 @@ import com.github.jacloc.android.imagebrowser.data.network.flickr.FlickrApi.Comp
 import com.github.jacloc.android.imagebrowser.data.network.flickr.FlickrApi.Companion.NO_JSON_CALLBACK
 import com.github.jacloc.android.imagebrowser.data.network.flickr.FlickrApi.Companion.PARAM_NAME_API_KEY
 import com.github.jacloc.android.imagebrowser.data.network.flickr.FlickrApi.Companion.PARAM_NAME_FORMAT
+import com.github.jacloc.android.imagebrowser.data.network.flickr.FlickrApi.Companion.PARAM_NAME_METHOD
 import com.github.jacloc.android.imagebrowser.data.network.flickr.FlickrApi.Companion.PARAM_NAME_NO_JSON_CALLBACK
+import com.github.jacloc.android.imagebrowser.data.network.flickr.FlickrApi.Companion.PARAM_NAME_PAGE
+import com.github.jacloc.android.imagebrowser.data.network.flickr.FlickrApi.Companion.PARAM_NAME_PER_PAGE
+import com.github.jacloc.android.imagebrowser.data.network.flickr.FlickrApi.Companion.PARAM_NAME_SEARCH_TEXT
+import com.github.jacloc.android.imagebrowser.data.network.flickr.FlickrApi.Companion.PER_PAGE_DEFAULT
 import com.github.jacloc.android.imagebrowser.mappers.FlickrPhotosResponseMapper
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
@@ -60,10 +65,11 @@ class FlickrPhotoRepository @Inject constructor(
         put(PARAM_NAME_API_KEY, API_KEY)
         put(PARAM_NAME_FORMAT, FORMAT_JSON)
         put(PARAM_NAME_NO_JSON_CALLBACK, NO_JSON_CALLBACK)
-        put(FlickrApi.PARAM_NAME_METHOD, method)
+        put(PARAM_NAME_PER_PAGE, PER_PAGE_DEFAULT.toString())
+        put(PARAM_NAME_METHOD, method)
         if (searchText != null) {
-            put(FlickrApi.PARAM_NAME_SEARCH_TEXT, searchText)
+            put(PARAM_NAME_SEARCH_TEXT, searchText)
         }
-        put(FlickrApi.PARAM_NAME_PAGE, page.toString())
+        put(PARAM_NAME_PAGE, page.toString())
     }
 }

@@ -29,6 +29,10 @@ class FlickrPhotosResponseMapper @Inject constructor() {
 
     private fun mapSinglePhotoResponse(photoResponse: PhotoResponse): Photo =
         photoResponse.run {
-            Photo(url = "https://live.staticflickr.com/$server/${id}_$secret.jpg")
+            Photo(
+                id = id,
+                title = title,
+                url = "https://live.staticflickr.com/$server/${id}_$secret.jpg"
+            )
         }
 }

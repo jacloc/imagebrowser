@@ -1,5 +1,6 @@
 package com.github.jacloc.android.imagebrowser.viewmodel
 
+import android.util.Log
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
@@ -68,10 +69,11 @@ class PhotoBrowserViewModel @Inject constructor(
             totalPages = nextPage.totalPages,
             pageSize = nextPage.pageSize,
             total = nextPage.total,
-            photoList = buildList {
+            // Remove any duplicates to avoid conflicting key issue
+            photoList = buildSet {
                 addAll(photoList)
                 addAll(nextPage.photoList)
-            }
+            }.toList()
         )
     }
 
@@ -105,6 +107,7 @@ class PhotoBrowserViewModel @Inject constructor(
     }
 
     private fun updatePhotoCollectionResult(photoCollectionResult: Result<PhotoCollection>) {
+        Log.i("PhotoBrowserViewModel", "updatePhotoCollectionResult: $photoCollectionResult")
         _uiStateFlow.update { prev ->
             UiState(
                 isLoading = false,

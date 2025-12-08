@@ -30,5 +30,8 @@ interface FlickrApi {
 
         const val PARAM_NAME_PAGE = "page"
         const val PAGE_DEFAULT_START_INDEX = 1
+
+        const val PARAM_NAME_PER_PAGE = "per_page"
+        const val PER_PAGE_DEFAULT = 100
     }
 }

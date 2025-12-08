@@ -12,6 +12,7 @@ class PhotoBrowserScreenPreviewParamProvider : PreviewParameterProvider<UiState>
             PhotoBrowserScreenParams.LOADING_STATE,
             PhotoBrowserScreenParams.ERROR_STATE,
             PhotoBrowserScreenParams.SUCCESS_STATE,
+            PhotoBrowserScreenParams.EMPTY_STATE,
             PhotoBrowserScreenParams.SEARCH_STATE
         )
 }
@@ -32,7 +33,11 @@ object PhotoBrowserScreenParams {
                 totalPages = 10,
                 pageSize = 100,
                 photoList = listOf(
-                    Photo(url = "https://live.staticflickr.com/65535/54969116967_e07192ef17.jpg")
+                    Photo(
+                        id = "123",
+                        title = "test",
+                        url = "https://live.staticflickr.com/65535/54969116967_e07192ef17.jpg"
+                    )
                 ),
                 total = 999
             ),
@@ -40,5 +45,16 @@ object PhotoBrowserScreenParams {
 
     val SEARCH_STATE = SUCCESS_STATE.copy(
         searchText = mutableStateOf("spiderman")
+    )
+
+    val EMPTY_STATE = UiState(
+        isLoading = false,
+        photoCollection = PhotoCollection(
+            currentPage = 1,
+            totalPages = 0,
+            pageSize = 100,
+            total = 0,
+            photoList = emptyList()
+        )
     )
 }
