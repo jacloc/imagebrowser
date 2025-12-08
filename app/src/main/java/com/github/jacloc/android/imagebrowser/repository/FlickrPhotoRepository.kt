@@ -2,7 +2,11 @@ package com.github.jacloc.android.imagebrowser.repository
 
 import com.github.jacloc.android.imagebrowser.data.domain.PhotoCollection
 import com.github.jacloc.android.imagebrowser.data.network.flickr.FlickrApi
+import com.github.jacloc.android.imagebrowser.coroutines.Dispatcher
+import com.github.jacloc.android.imagebrowser.coroutines.ImageBrowserAppDispatchers
 import com.github.jacloc.android.imagebrowser.mappers.FlickrPhotosResponseMapper
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
@@ -10,27 +14,30 @@ import javax.inject.Inject
  */
 class FlickrPhotoRepository @Inject constructor(
     private val flickrApi: FlickrApi,
-    private val flickrPhotosResponseMapper: FlickrPhotosResponseMapper
+    private val flickrPhotosResponseMapper: FlickrPhotosResponseMapper,
+    @Dispatcher(ImageBrowserAppDispatchers.IO) private val ioDispatcher: CoroutineDispatcher
 ) : PhotoRepository {
 
-    override suspend fun getRecentPhotos(): Result<PhotoCollection> {
-        val photosResponseResult = flickrApi.fetchPhotos(
-            queryMap = createFlickrApiQueryMap(FlickrApi.METHOD_RECENT_PHOTOS)
-        )
-
-        return photosResponseResult.map(flickrPhotosResponseMapper::map)
-    }
-
-    override suspend fun searchPhotos(query: String): Result<PhotoCollection> {
-        val photosResponseResult = flickrApi.fetchPhotos(
-            queryMap = createFlickrApiQueryMap(
-                method = FlickrApi.METHOD_SEARCH,
-                searchText = query
+    override suspend fun getRecentPhotos(): Result<PhotoCollection> =
+        withContext(ioDispatcher) {
+            val photosResponseResult = flickrApi.fetchPhotos(
+                queryMap = createFlickrApiQueryMap(FlickrApi.METHOD_RECENT_PHOTOS)
             )
-        )
 
-        return photosResponseResult.map(flickrPhotosResponseMapper::map)
-    }
+            photosResponseResult.map(flickrPhotosResponseMapper::map)
+        }
+
+    override suspend fun searchPhotos(query: String): Result<PhotoCollection> =
+        withContext(ioDispatcher) {
+            val photosResponseResult = flickrApi.fetchPhotos(
+                queryMap = createFlickrApiQueryMap(
+                    method = FlickrApi.METHOD_SEARCH,
+                    searchText = query
+                )
+            )
+
+            photosResponseResult.map(flickrPhotosResponseMapper::map)
+        }
 
     private fun createFlickrApiQueryMap(
         method: String,
