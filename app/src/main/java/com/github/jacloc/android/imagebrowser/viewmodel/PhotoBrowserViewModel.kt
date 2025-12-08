@@ -17,7 +17,8 @@ data class UiState(
     val isLoading: Boolean = true,
     val photoCollection: PhotoCollection? = null,
     val errorMessage: String? = null,
-    val searchText: MutableState<String> = mutableStateOf("")
+    val searchText: MutableState<String> = mutableStateOf(""),
+    val isLoadingMore: Boolean = false,
 )
 
 @HiltViewModel
@@ -28,14 +29,60 @@ class PhotoBrowserViewModel @Inject constructor(
     private val _uiStateFlow = MutableStateFlow(UiState())
     val uiStateFlow = _uiStateFlow.asStateFlow()
 
+    // Flag indicating which data source to use when loading more (recent or search)
+    private var useSearchDataForPaging = false
+
     init {
         loadRecentPhotos()
+    }
+
+    fun loadMorePhotos() {
+        val existingPhotoCollection = _uiStateFlow.value.photoCollection ?: return
+        val nextPageIndex = existingPhotoCollection.currentPage + 1
+        if (nextPageIndex > existingPhotoCollection.totalPages) {
+            return
+        }
+
+        viewModelScope.launch {
+            _uiStateFlow.update {
+                it.copy(isLoadingMore = true)
+            }
+            val nextPage = if (useSearchDataForPaging) {
+                photoRepository.searchPhotos(
+                    query = _uiStateFlow.value.searchText.value,
+                    page = nextPageIndex
+                )
+            } else {
+                photoRepository.getRecentPhotos(page = nextPageIndex)
+            }
+
+            updatePhotoCollectionResult(
+                nextPage.map { existingPhotoCollection.appendNextPage(it) }
+            )
+        }
+    }
+
+    private fun PhotoCollection.appendNextPage(nextPage: PhotoCollection): PhotoCollection {
+        return PhotoCollection(
+            currentPage = nextPage.currentPage,
+            totalPages = nextPage.totalPages,
+            pageSize = nextPage.pageSize,
+            total = nextPage.total,
+            photoList = buildList {
+                addAll(photoList)
+                addAll(nextPage.photoList)
+            }
+        )
     }
 
     private fun loadRecentPhotos() {
         setLoading()
         viewModelScope.launch {
-            updatePhotoCollectionResult(photoRepository.getRecentPhotos())
+            val photoCollectionResult = photoRepository.getRecentPhotos()
+            if (photoCollectionResult.isSuccess) {
+                useSearchDataForPaging = false
+            }
+            updatePhotoCollectionResult(photoCollectionResult)
         }
     }
 
@@ -47,6 +94,10 @@ class PhotoBrowserViewModel @Inject constructor(
 
         setLoading()
         viewModelScope.launch {
+            val photoCollectionResult = photoRepository.searchPhotos(searchText)
+            if (photoCollectionResult.isSuccess) {
+                useSearchDataForPaging = true
+            }
             updatePhotoCollectionResult(
                 photoRepository.searchPhotos(searchText)
             )
@@ -59,7 +110,8 @@ class PhotoBrowserViewModel @Inject constructor(
                 isLoading = false,
                 photoCollection = photoCollectionResult.getOrNull() ?: prev.photoCollection,
                 errorMessage = photoCollectionResult.exceptionOrNull()?.toString(),
-                searchText = prev.searchText
+                searchText = prev.searchText,
+                isLoadingMore = false
             )
         }
     }

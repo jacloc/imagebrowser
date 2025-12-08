@@ -28,11 +28,7 @@ interface FlickrApi {
 
         const val PARAM_NAME_SEARCH_TEXT = "text"
 
-        // Shared default query params
-        val DEFAULT_QUERY_PARAMS = mapOf<String, String>(
-            PARAM_NAME_API_KEY to API_KEY,
-            PARAM_NAME_FORMAT to FORMAT_JSON,
-            PARAM_NAME_NO_JSON_CALLBACK to NO_JSON_CALLBACK
-        )
+        const val PARAM_NAME_PAGE = "page"
+        const val PAGE_DEFAULT_START_INDEX = 1
     }
 }

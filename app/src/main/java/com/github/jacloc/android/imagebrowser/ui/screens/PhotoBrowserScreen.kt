@@ -15,7 +15,9 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.staggeredgrid.LazyVerticalStaggeredGrid
 import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridCells
+import androidx.compose.foundation.lazy.staggeredgrid.StaggeredGridItemSpan
 import androidx.compose.foundation.lazy.staggeredgrid.items
+import androidx.compose.foundation.lazy.staggeredgrid.rememberLazyStaggeredGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
@@ -40,6 +42,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.tooling.preview.Preview
@@ -63,6 +66,9 @@ fun PhotoBrowserScreen(
         uiState = uiState,
         onSearch = { searchText ->
             photoBrowserViewModel.search(searchText)
+        },
+        onLoadMore = {
+            photoBrowserViewModel.loadMorePhotos()
         }
     )
 }
@@ -72,7 +78,8 @@ fun PhotoBrowserScreen(
 fun PhotoBrowserScreen(
     modifier: Modifier = Modifier,
     uiState: UiState,
-    onSearch: (String) -> Unit
+    onSearch: (String) -> Unit,
+    onLoadMore: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -116,14 +123,13 @@ fun PhotoBrowserScreen(
             }
 
             if (uiState.isLoading) {
-                CircularProgressIndicator(modifier = Modifier
-                    .padding(top = 8.dp)
-                    .fillMaxWidth()
-                    .wrapContentSize())
+                LoadingSpinner()
             } else if (uiState.photoCollection != null) {
                 PhotoGrid(
                     modifier = Modifier.fillMaxSize(),
-                    photoCollection = uiState.photoCollection
+                    photoCollection = uiState.photoCollection,
+                    isLoadingMore = uiState.isLoadingMore,
+                    onLoadMore = onLoadMore
                 )
             }
         }
@@ -131,18 +137,45 @@ fun PhotoBrowserScreen(
 }
 
 @Composable
+fun LoadingSpinner() {
+    CircularProgressIndicator(modifier = Modifier
+        .padding(top = 8.dp)
+        .fillMaxWidth()
+        .wrapContentSize())
+}
+
+@Composable
 fun PhotoGrid(
     modifier: Modifier = Modifier,
-    photoCollection: PhotoCollection
+    photoCollection: PhotoCollection,
+    isLoadingMore: Boolean,
+    onLoadMore: () -> Unit
 ) {
+    val listState = rememberLazyStaggeredGridState()
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+            .collect { lastVisibleItemIndex ->
+                if (lastVisibleItemIndex != null &&
+                    lastVisibleItemIndex == listState.layoutInfo.totalItemsCount - 1 &&
+                    listState.layoutInfo.totalItemsCount > 0 // Ensure there are items
+                ) {
+                    onLoadMore()
+                }
+            }
+    }
+
     LazyVerticalStaggeredGrid(
         modifier = modifier,
-        columns = StaggeredGridCells.Fixed(3)
+        columns = StaggeredGridCells.Fixed(3),
+        state = listState
     ) {
         items(photoCollection.photoList) {
             PhotoItem(modifier = Modifier
                 .fillMaxWidth()
                 .padding(8.dp), photo = it)
+        }
+        if (isLoadingMore) {
+            item(span = StaggeredGridItemSpan.FullLine) { LoadingSpinner() }
         }
     }
 }
@@ -170,7 +203,8 @@ private fun PreviewPhotoBrowserScreen(
             PhotoBrowserScreen(
                 modifier = Modifier.fillMaxSize(),
                 uiState = uiState,
-                onSearch = {}
+                onSearch = {},
+                onLoadMore = {}
             )
         }
     }
