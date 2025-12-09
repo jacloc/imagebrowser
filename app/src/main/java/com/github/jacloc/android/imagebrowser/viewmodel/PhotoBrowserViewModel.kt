@@ -107,7 +107,7 @@ class PhotoBrowserViewModel @Inject constructor(
     }
 
     private fun updatePhotoCollectionResult(photoCollectionResult: Result<PhotoCollection>) {
-        Log.i("PhotoBrowserViewModel", "updatePhotoCollectionResult: $photoCollectionResult")
+//        Log.i("PhotoBrowserViewModel", "updatePhotoCollectionResult: $photoCollectionResult")
         _uiStateFlow.update { prev ->
             UiState(
                 isLoading = false,

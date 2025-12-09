@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -25,7 +24,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
@@ -45,6 +43,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
@@ -52,6 +53,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.github.jacloc.android.imagebrowser.data.domain.Photo
 import com.github.jacloc.android.imagebrowser.data.domain.PhotoCollection
 import com.github.jacloc.android.imagebrowser.ui.theme.ImageBrowserTheme
@@ -84,21 +86,30 @@ fun PhotoBrowserScreen(
     onLoadMore: () -> Unit,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     Scaffold(
         modifier = modifier,
         contentWindowInsets = WindowInsets.safeDrawing,
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+        snackbarHost = {
+            SnackbarHost(
+                modifier = Modifier.testTag(PhotoBrowserScreenTestTags.ERROR_SNACK_BAR),
+                hostState = snackbarHostState
+            )
+        }
     ) {
         Column {
             SearchBar(
                 modifier = Modifier.fillMaxWidth(),
                 inputField = {
                     SearchBarDefaults.InputField(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().testTag(PhotoBrowserScreenTestTags.SEARCH_INPUT),
                         query = uiState.searchText.value,
                         onQueryChange = { uiState.searchText.value = it },
-                        onSearch = onSearch,
+                        onSearch = {
+                            keyboardController?.hide()
+                            onSearch(it)
+                        },
                         expanded = false,
                         onExpandedChange = {},
                         leadingIcon = {
@@ -109,7 +120,7 @@ fun PhotoBrowserScreen(
                 },
                 expanded = false,
                 onExpandedChange = {},
-                content = {}
+                content = {},
             )
 
             if (uiState.errorMessage != null) {
@@ -123,10 +134,10 @@ fun PhotoBrowserScreen(
             }
 
             if (uiState.isLoading) {
-                LoadingSpinner()
+                LoadingSpinner(PhotoBrowserScreenTestTags.LOADING_SPINNER)
             } else if (uiState.photoCollection != null) {
                 PhotoGrid(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().testTag(PhotoBrowserScreenTestTags.PHOTO_GRID),
                     photoCollection = uiState.photoCollection,
                     isLoadingMore = uiState.isLoadingMore,
                     onLoadMore = onLoadMore,
@@ -137,8 +148,9 @@ fun PhotoBrowserScreen(
 }
 
 @Composable
-fun LoadingSpinner() {
+fun LoadingSpinner(testTag: String = PhotoBrowserScreenTestTags.LOADING_SPINNER) {
     CircularProgressIndicator(modifier = Modifier
+        .testTag(testTag)
         .padding(top = 8.dp)
         .fillMaxWidth()
         .wrapContentSize())
@@ -173,7 +185,9 @@ fun PhotoGrid(
             })
         }
         if (isLoadingMore) {
-            item(span = { GridItemSpan(3) }) { LoadingSpinner() }
+            item(span = { GridItemSpan(3) }) {
+                LoadingSpinner(PhotoBrowserScreenTestTags.LOAD_MORE_SPINNER)
+            }
         }
     }
 
@@ -259,7 +273,10 @@ fun SquarePhotoItem(
             .clickable(onClick = { onPhotoClicked(photo) })
             .aspectRatio(1f)
             .padding(8.dp),
-        model = photo.url,
+        model = ImageRequest.Builder(LocalContext.current)
+            .data(photo.url)
+            .crossfade(true)
+            .build(),
         contentScale = ContentScale.Crop,
         contentDescription = "Image from URL",
     )
@@ -281,4 +298,12 @@ private fun PreviewPhotoBrowserScreen(
             )
         }
     }
+}
+
+object PhotoBrowserScreenTestTags {
+    const val SEARCH_INPUT = "search_input"
+    const val LOADING_SPINNER = "loading_spinner"
+    const val LOAD_MORE_SPINNER = "load_more_spinner"
+    const val PHOTO_GRID = "photo_grid"
+    const val ERROR_SNACK_BAR = "error_snack_bar"
 }

@@ -1,5 +1,6 @@
 package com.github.jacloc.android.imagebrowser.mappers
 
+import androidx.annotation.VisibleForTesting
 import com.github.jacloc.android.imagebrowser.data.domain.Photo
 import com.github.jacloc.android.imagebrowser.data.domain.PhotoCollection
 import com.github.jacloc.android.imagebrowser.data.network.flickr.PhotoCollectionResponse
@@ -11,9 +12,11 @@ import javax.inject.Inject
  * Maps Flickr network model [com.github.jacloc.android.imagebrowser.data.network.flickr.PhotoResponse]
  * to domain model [com.github.jacloc.android.imagebrowser.data.domain.Photo]
  */
-class FlickrPhotosResponseMapper @Inject constructor() {
+@VisibleForTesting
+open class FlickrPhotosResponseMapper @Inject constructor() {
 
-    fun map(photosResponse: PhotosResponse): PhotoCollection =
+    @VisibleForTesting
+    open fun map(photosResponse: PhotosResponse): PhotoCollection =
         mapPhotoCollectionResponse(photosResponse.photoCollection)
 
     private fun mapPhotoCollectionResponse(photoCollectionResponse: PhotoCollectionResponse): PhotoCollection =

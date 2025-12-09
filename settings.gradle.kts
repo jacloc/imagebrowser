@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "ImageBrowser"
 include(":app")
+include(":testing")

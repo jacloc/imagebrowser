@@ -80,7 +80,14 @@ dependencies {
     // Image loading
     implementation("io.coil-kt:coil-compose:2.4.0")
 
+    testImplementation(project(":testing"))
     testImplementation(libs.junit)
+    testImplementation(libs.mockito.kotlin)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
+    testImplementation(libs.kotlin.test)
+
+    androidTestImplementation(project(":testing"))
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
